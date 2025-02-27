@@ -4,8 +4,34 @@ import React, { useState, useEffect, useRef } from 'react';
 // Remove the local data import
 // import data from './data.json'; // Import the JSON data
 import { fetchCountryData, fetchStoreData } from './api';
+import LoginModal from './LoginModal';
 
 const StockOutTable = () => {
+  // Check for existing authentication in localStorage
+  const checkExistingAuth = () => {
+    const storedAuth = localStorage.getItem('stockOutDashboardAuth');
+    if (storedAuth) {
+      try {
+        const authData = JSON.parse(storedAuth);
+        // Check if the authentication is still valid (within 30 days)
+        if (authData.expiry > Date.now()) {
+          return true;
+        } else {
+          // Clear expired authentication
+          localStorage.removeItem('stockOutDashboardAuth');
+        }
+      } catch (e) {
+        // If there's an error parsing, clear the invalid data
+        localStorage.removeItem('stockOutDashboardAuth');
+      }
+    }
+    return false;
+  };
+
+  // Initialize authentication state from localStorage
+  const [isAuthenticated, setIsAuthenticated] = useState(checkExistingAuth());
+  const [showLoginModal, setShowLoginModal] = useState(!checkExistingAuth());
+  
   // Add new state for search
   const [searchTerm, setSearchTerm] = useState('');
   // Add state for API data
@@ -180,318 +206,316 @@ const StockOutTable = () => {
     });
   };
 
+  // Handle successful login
+  const handleLogin = (success) => {
+    if (success) {
+      // Set authentication state
+      setIsAuthenticated(true);
+      setShowLoginModal(false);
+      
+      // Store authentication in localStorage with 30-day expiry
+      const thirtyDaysInMs = 30 * 24 * 60 * 60 * 1000;
+      const authData = {
+        authenticated: true,
+        timestamp: Date.now(),
+        expiry: Date.now() + thirtyDaysInMs
+      };
+      localStorage.setItem('stockOutDashboardAuth', JSON.stringify(authData));
+    }
+  };
+
+  // Add logout function
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setShowLoginModal(true);
+    localStorage.removeItem('stockOutDashboardAuth');
+  };
+
   return (
     <div className="container mx-auto">
-      {/* Add loading and error states */}
-      {loading && (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-        </div>
-      )}
+      {/* Show login modal if not authenticated */}
+      <LoginModal 
+        isOpen={showLoginModal && !isAuthenticated} 
+        onLogin={handleLogin} 
+      />
       
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-          <strong className="font-bold">Error!</strong>
-          <span className="block sm:inline"> {error}</span>
-        </div>
-      )}
-      
-      {!loading && !error && (
+      {/* Only show the dashboard content if authenticated */}
+      {isAuthenticated && (
         <>
-          {/* Add TopBar */}
-          <div className="bg-white shadow-md p-4 mb-6 flex justify-between items-center">
-            <div className="flex items-center space-x-4">
-              <h1 className="text-2xl font-bold">Stock-Out Dashboard</h1>
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Search..."
-                  className="pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={searchTerm}
-                  onChange={handleSearch}
-                />
-                <svg
-                  className="absolute left-3 top-2.5 h-5 w-5 text-gray-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                  />
-                </svg>
-              </div>
+          {/* Loading and error states */}
+          {loading && (
+            <div className="flex justify-center items-center h-64">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
             </div>
-            
-            <div className="flex items-center space-x-4">
-              <div className="text-right">
-                <p className="text-sm font-medium">John Doe</p>
-                <p className="text-xs text-gray-500">Administrator</p>
-              </div>
-              <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
-                <svg
-                  className="h-6 w-6 text-gray-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                  />
-                </svg>
-              </div>
+          )}
+          
+          {error && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+              <strong className="font-bold">Error!</strong>
+              <span className="block sm:inline"> {error}</span>
             </div>
-          </div>
+          )}
+          
+          {!loading && !error && (
+            <>
+              {/* TopBar with logout button */}
+              <div className="bg-white shadow-md p-4 mb-6 flex justify-between items-center">
+                <div className="text-xl font-bold">Stock-Out Dashboard</div>
+                
+                {/* Add logout button */}
+                <button
+                  onClick={handleLogout}
+                  className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded"
+                >
+                  Logout
+                </button>
+              </div>
 
-          {/* Existing content */}
-          <div className="p-4">
-            {orderedLevels.map((level) => (
-              groupedData[level] && (
-                <div key={level} className="mb-8">
-                  <h2 className="text-xl font-semibold mb-2">Level: {level}</h2>
-                  <p className="mb-4">This table shows the stock-out situations for level {level}.</p>
-                  
-                  {/* Updated filter section with buttons */}
-                  <div className="bg-gray-100 p-4 mb-4 rounded-lg">
-                    <h3 className="text-lg font-medium mb-2">Filters</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Store Name
-                        </label>
-                        <input
-                          type="text"
-                          className="w-full p-2 border rounded-md"
-                          placeholder="Filter by store name..."
-                          value={filters[level].store}
-                          onChange={(e) => handleStoreFilterChange(level, e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Stock-out Risk
-                        </label>
-                        <div className="flex flex-wrap gap-2">
-                          <button
-                            className={`px-3 py-1 rounded-md ${
-                              filters[level].riskCategory === 'below50' 
-                                ? 'bg-blue-500 text-white' 
-                                : 'bg-gray-200 text-gray-800'
-                            }`}
-                            onClick={() => handleRiskCategoryChange(level, 'below50')}
-                          >
-                            Below 50%
-                          </button>
-                          <button
-                            className={`px-3 py-1 rounded-md ${
-                              filters[level].riskCategory === '50to80' 
-                                ? 'bg-blue-500 text-white' 
-                                : 'bg-gray-200 text-gray-800'
-                            }`}
-                            onClick={() => handleRiskCategoryChange(level, '50to80')}
-                          >
-                            50% - 80%
-                          </button>
-                          <button
-                            className={`px-3 py-1 rounded-md ${
-                              filters[level].riskCategory === 'above80' 
-                                ? 'bg-blue-500 text-white' 
-                                : 'bg-gray-200 text-gray-800'
-                            }`}
-                            onClick={() => handleRiskCategoryChange(level, 'above80')}
-                          >
-                            Above 80%
-                          </button>
-                          <button
-                            className={`px-3 py-1 rounded-md ${
-                              filters[level].riskCategory === 'all' 
-                                ? 'bg-blue-500 text-white' 
-                                : 'bg-gray-200 text-gray-800'
-                            }`}
-                            onClick={() => handleRiskCategoryChange(level, 'all')}
-                          >
-                            Show All
-                          </button>
+              {/* Existing content */}
+              <div className="p-4">
+                {orderedLevels.map((level) => (
+                  groupedData[level] && (
+                    <div key={level} className="mb-8">
+                      <h2 className="text-xl font-semibold mb-2">Level: {level}</h2>
+                      <p className="mb-4">This table shows the stock-out situations for level {level}.</p>
+                      
+                      {/* Updated filter section with buttons */}
+                      <div className="bg-gray-100 p-4 mb-4 rounded-lg">
+                        <h3 className="text-lg font-medium mb-2">Filters</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Store Name
+                            </label>
+                            <input
+                              type="text"
+                              className="w-full p-2 border rounded-md"
+                              placeholder="Filter by store name..."
+                              value={filters[level].store}
+                              onChange={(e) => handleStoreFilterChange(level, e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Stock-out Risk
+                            </label>
+                            <div className="flex flex-wrap gap-2">
+                              <button
+                                className={`px-3 py-1 rounded-md ${
+                                  filters[level].riskCategory === 'below50' 
+                                    ? 'bg-blue-500 text-white' 
+                                    : 'bg-gray-200 text-gray-800'
+                                }`}
+                                onClick={() => handleRiskCategoryChange(level, 'below50')}
+                              >
+                                Below 50%
+                              </button>
+                              <button
+                                className={`px-3 py-1 rounded-md ${
+                                  filters[level].riskCategory === '50to80' 
+                                    ? 'bg-blue-500 text-white' 
+                                    : 'bg-gray-200 text-gray-800'
+                                }`}
+                                onClick={() => handleRiskCategoryChange(level, '50to80')}
+                              >
+                                50% - 80%
+                              </button>
+                              <button
+                                className={`px-3 py-1 rounded-md ${
+                                  filters[level].riskCategory === 'above80' 
+                                    ? 'bg-blue-500 text-white' 
+                                    : 'bg-gray-200 text-gray-800'
+                                }`}
+                                onClick={() => handleRiskCategoryChange(level, 'above80')}
+                              >
+                                Above 80%
+                              </button>
+                              <button
+                                className={`px-3 py-1 rounded-md ${
+                                  filters[level].riskCategory === 'all' 
+                                    ? 'bg-blue-500 text-white' 
+                                    : 'bg-gray-200 text-gray-800'
+                                }`}
+                                onClick={() => handleRiskCategoryChange(level, 'all')}
+                              >
+                                Show All
+                              </button>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </div>
-                  
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full border-collapse border border-gray-300">
-                      <thead>
-                        <tr className={colorClasses[level]?.header || 'bg-gray-200'}>
-                          <th className="px-6 py-3 border border-gray-300">Level</th>
-                          <th className="px-6 py-3 border border-gray-300">Number of Unique IDs</th>
-                          <th className="px-6 py-3 border border-gray-300">Number of Stores</th>
-                          <th className="px-6 py-3 border border-gray-300">Number of Vaccines</th>
-                          <th className="px-6 py-3 border border-gray-300">Action</th>
-                          <th className="px-6 py-3 border border-gray-300">Description</th>
-                          <th className="px-6 py-3 border border-gray-300">Comments</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr
-                          className={`${colorClasses[level]?.row || 'bg-gray-100'} cursor-pointer`}
-                          onClick={() => toggleLevel(level)}
-                        >
-                          <td className="px-6 py-4 border border-gray-300">{level}</td>
-                          <td className="px-6 py-4 border border-gray-300">{getFilteredData(level).length}</td>
-                          <td className="px-6 py-4 border border-gray-300">{new Set(getFilteredData(level).map(item => item.store_name)).size}</td>
-                          <td className="px-6 py-4 border border-gray-300">{new Set(getFilteredData(level).map(item => item.vaccine_type)).size}</td>
-                          <td className="px-6 py-4 border border-gray-300">{expandedLevels[level] ? 'Collapse' : 'Expand'}</td>
-                          <td className="py-2 px-6 border border-gray-300 flex flex-col">
-                            <button className="bg-gray-500 text-white text-xs px-2 py-1 mb-2 rounded" data-tooltip-target="tooltip-funding">Funding</button>
-                            <button className="bg-gray-500 text-white text-xs px-2 py-1 mb-2 rounded" data-tooltip-target="tooltip-in-country-distribution">In Country Distribution</button>
-                            <button className="bg-gray-500 text-white text-xs px-2 py-1 mb-2 rounded" data-tooltip-target="tooltip-procurement-and-supply-unicef">Procurement and Supply (UNICEF)</button>
-                            <button className="bg-gray-500 text-white text-xs px-2 py-1 mb-2 rounded" data-tooltip-target="tooltip-storage-capacity-functionality">Storage capacity/functionality</button>
-                            <button className="bg-gray-500 text-white text-xs px-2 py-1 mb-2 rounded" data-tooltip-target="tooltip-procurement-and-supply-epi">Procurement and Supply (EPI)</button>
-                            <button className="bg-gray-500 text-white text-xs px-2 py-1 mb-2 rounded" data-tooltip-target="tooltip-forecasting-and-allocation">Forecasting and allocation</button>
-                          </td>
-                          <td className="px-6 py-4 border border-gray-300">Comments here</td>
-                        </tr>
-                        {expandedLevels[level] && (
-                          <>
-                            <tr className={colorClasses[level]?.expandedHeader || 'bg-gray-300'}>
-                              <th className="px-6 py-3 border border-gray-300">Country</th>
-                              <th className="px-6 py-3 border border-gray-300">Store</th>
-                              <th className="px-6 py-3 border border-gray-300">Parent Store</th>
-                              <th className="px-6 py-3 border border-gray-300">Vaccine Type</th>
-                              <th className="px-6 py-3 border border-gray-300">3M Stockout Risk*</th>
-                              <th className="px-6 py-3 border border-gray-300">Curent Stataus(Min/Max)</th>
-                              <th className="px-6 py-3 border border-gray-300">Report Date</th>
+                      
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full border-collapse border border-gray-300">
+                          <thead>
+                            <tr className={colorClasses[level]?.header || 'bg-gray-200'}>
+                              <th className="px-6 py-3 border border-gray-300">Level</th>
+                              <th className="px-6 py-3 border border-gray-300">Number of Unique IDs</th>
+                              <th className="px-6 py-3 border border-gray-300">Number of Stores</th>
+                              <th className="px-6 py-3 border border-gray-300">Number of Vaccines</th>
+                              <th className="px-6 py-3 border border-gray-300">Action</th>
+                              <th className="px-6 py-3 border border-gray-300">Description</th>
+                              <th className="px-6 py-3 border border-gray-300">Comments</th>
                             </tr>
-                            {getFilteredData(level).map((item, index) => {
-                              const storeId = item.unique_id.split('-').slice(0, 3).join('-');
-                              const storeInfo = storeData[storeId];
-                              const storeDataRecord = Array.isArray(storeInfo) ? storeInfo[0] : storeInfo;
-                              const vaccineType = item.vaccine_type.toLowerCase();
-                              
-                              // Get parent store data
-                              console.log('Store Data Record', storeDataRecord);
-                              const parentStoreId = storeDataRecord?.parentstore;
-                              const parentStoreInfo = parentStoreId ? storeData[parentStoreId] : null;
-                              const parentStoreRecord = Array.isArray(parentStoreInfo) ? parentStoreInfo[0] : parentStoreInfo;
-                              const parentVaccineStock = parentStoreRecord?.[vaccineType];
-                             
-
-                              let progressBarContent = 'Loading...';
-                              if (storeDataRecord === null && level !== 'Central') {
-                                progressBarContent = 'No Data';
-                              } else if (
-                                storeDataRecord !== undefined &&
-                                level !== 'Central' &&
-                                storeDataRecord.hasOwnProperty(vaccineType) &&
-                                storeDataRecord.hasOwnProperty(`${vaccineType}_min`) &&
-                                storeDataRecord.hasOwnProperty(`${vaccineType}_max`)
-                              ) {
-                                const actual = storeDataRecord[vaccineType];
-                                const min = storeDataRecord[`${vaccineType}_min`];
-                                const max = storeDataRecord[`${vaccineType}_max`];
-
-                                if (actual < min) {
-                                  const progress = ((actual - min) / (max - min)) * 100;
-                                  const barWidth = Math.min(Math.abs(progress), 100);
-                                  progressBarContent = (
-                                    <div className="flex flex-col">
-                                      <span className="text-sm font-bold text-center">Available Stock: {actual}</span>
-                                      <div className="relative w-full h-4 bg-gray-200 rounded overflow-hidden">
-                                      
-                                        <div
-                                          className="absolute top-0 left-0 h-4 bg-red-500 rounded"
-                                          style={{ width: `${barWidth}%` }}
-                                        ></div>
-                                       
-                                        <span className="absolute inset-0 flex items-center justify-center text-xs text-black">
-                                          {progress.toFixed(0)}%
-                                        </span>
-                                      </div>
-                                      <div className="flex justify-between text-xs mt-1">
-                                        <span>Min: {min}</span>
-                                        
-                                        <span>Max: {max}</span>
-                                      </div>
-                                    </div>
-                                  );
-                                } else {
-                                  // Calculate progress percentage (can be >100)
-                                  const progress = max !== min ? ((actual - min) / (max - min)) * 100 : 0;
-                                  const barWidth = Math.min(progress, 100);
-                                  progressBarContent = (
-                                    <div className="flex flex-col">
-                                      <span className="text-sm font-bold text-center">Avalible Stock: {actual}</span>
-                                      <div className="relative w-full h-4 bg-gray-200 rounded overflow-hidden">
-                                        <div
-                                          className="absolute top-0 left-0 h-4 bg-green-500 rounded"
-                                          style={{ width: `${barWidth}%` }}
-                                        ></div>
-                                        <span className="absolute inset-0 flex items-center justify-center text-xs text-black">
-                                          {progress.toFixed(0)}%
-                                        </span>
-                                      </div>
-                                      <div className="flex justify-between text-xs mt-1">
-                                        <span>Min: {min}</span>
-                                      
-                                        <span>Max: {max}</span>
-                                      </div>
-                                    </div>
-                                  );
-                                }
-                               
-                              } else if (storeDataRecord !== undefined && level !== 'Central') {
-                                progressBarContent = 'No Data';
-                              } else {
-                                progressBarContent = item.stockout_risk;
-                              }
-                            
-
-                              return (
-                                <tr key={index} className={colorClasses[level]?.expandedRow || 'bg-gray-50'}>
-                                  <td className="px-6 py-4 border border-gray-300">{item.country_name}</td>
-                                  <td className="px-6 py-4 border border-gray-300">
-                                    <div className="flex flex-col">
-                                      <span className="font-normal">{item.store_name}</span>
-                                      <span className="text-xs text-gray-600">{item.unique_id}</span>
-                                    </div>
-                                  </td>
-                                  <td className="px-6 py-4 border border-gray-300">
-                                    <div className="flex flex-col">
-                                    
-                                      <span className=" text-sm font-bold">{parentStoreRecord?.adminlevel1}</span>
-                                      
-                                      <span className="text-xs">{storeDataRecord?.parentstore || 'No Parent Store'}</span>
-                                      {parentVaccineStock !== undefined && (
-                                        <span className="text-xs text-gray-600 font-bold">Parent Stock: {parentVaccineStock}</span>
-                                      )}
-                                    </div>
-                                  </td>
-                                  <td className="px-6 py-4 border border-gray-300">{item.vaccine_type}</td>
-                                  <td className="px-6 py-4 border border-gray-300">{(item.probability * 100).toFixed(0)}%</td>
-                                  <td className="px-6 py-4 border border-gray-300">
-                                    {progressBarContent}
-                                  </td>
-                                  
-                                  <td className="px-6 py-4 border border-gray-300">
-                                    {new Date(item.report_date).toLocaleDateString()}
-                                  </td>
+                          </thead>
+                          <tbody>
+                            <tr
+                              className={`${colorClasses[level]?.row || 'bg-gray-100'} cursor-pointer`}
+                              onClick={() => toggleLevel(level)}
+                            >
+                              <td className="px-6 py-4 border border-gray-300">{level}</td>
+                              <td className="px-6 py-4 border border-gray-300">{getFilteredData(level).length}</td>
+                              <td className="px-6 py-4 border border-gray-300">{new Set(getFilteredData(level).map(item => item.store_name)).size}</td>
+                              <td className="px-6 py-4 border border-gray-300">{new Set(getFilteredData(level).map(item => item.vaccine_type)).size}</td>
+                              <td className="px-6 py-4 border border-gray-300">{expandedLevels[level] ? 'Collapse' : 'Expand'}</td>
+                              <td className="py-2 px-6 border border-gray-300 flex flex-col">
+                                <button className="bg-gray-500 text-white text-xs px-2 py-1 mb-2 rounded" data-tooltip-target="tooltip-funding">Funding</button>
+                                <button className="bg-gray-500 text-white text-xs px-2 py-1 mb-2 rounded" data-tooltip-target="tooltip-in-country-distribution">In Country Distribution</button>
+                                <button className="bg-gray-500 text-white text-xs px-2 py-1 mb-2 rounded" data-tooltip-target="tooltip-procurement-and-supply-unicef">Procurement and Supply (UNICEF)</button>
+                                <button className="bg-gray-500 text-white text-xs px-2 py-1 mb-2 rounded" data-tooltip-target="tooltip-storage-capacity-functionality">Storage capacity/functionality</button>
+                                <button className="bg-gray-500 text-white text-xs px-2 py-1 mb-2 rounded" data-tooltip-target="tooltip-procurement-and-supply-epi">Procurement and Supply (EPI)</button>
+                                <button className="bg-gray-500 text-white text-xs px-2 py-1 mb-2 rounded" data-tooltip-target="tooltip-forecasting-and-allocation">Forecasting and allocation</button>
+                              </td>
+                              <td className="px-6 py-4 border border-gray-300">Comments here</td>
+                            </tr>
+                            {expandedLevels[level] && (
+                              <>
+                                <tr className={colorClasses[level]?.expandedHeader || 'bg-gray-300'}>
+                                  <th className="px-6 py-3 border border-gray-300">Country</th>
+                                  <th className="px-6 py-3 border border-gray-300">Store</th>
+                                  <th className="px-6 py-3 border border-gray-300">Parent Store</th>
+                                  <th className="px-6 py-3 border border-gray-300">Vaccine Type</th>
+                                  <th className="px-6 py-3 border border-gray-300">3M Stockout Risk*</th>
+                                  <th className="px-6 py-3 border border-gray-300">Curent Stataus(Min/Max)</th>
+                                  <th className="px-6 py-3 border border-gray-300">Report Date</th>
                                 </tr>
-                              );
-                            })}
-                          </>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )
-            ))}
-          </div>
+                                {getFilteredData(level).map((item, index) => {
+                                  const storeId = item.unique_id.split('-').slice(0, 3).join('-');
+                                  const storeInfo = storeData[storeId];
+                                  const storeDataRecord = Array.isArray(storeInfo) ? storeInfo[0] : storeInfo;
+                                  const vaccineType = item.vaccine_type.toLowerCase();
+                                  
+                                  // Get parent store data
+                                  console.log('Store Data Record', storeDataRecord);
+                                  const parentStoreId = storeDataRecord?.parentstore;
+                                  const parentStoreInfo = parentStoreId ? storeData[parentStoreId] : null;
+                                  const parentStoreRecord = Array.isArray(parentStoreInfo) ? parentStoreInfo[0] : parentStoreInfo;
+                                  const parentVaccineStock = parentStoreRecord?.[vaccineType];
+                                 
+
+                                  let progressBarContent = 'Loading...';
+                                  if (storeDataRecord === null && level !== 'Central') {
+                                    progressBarContent = 'No Data';
+                                  } else if (
+                                    storeDataRecord !== undefined &&
+                                    level !== 'Central' &&
+                                    storeDataRecord.hasOwnProperty(vaccineType) &&
+                                    storeDataRecord.hasOwnProperty(`${vaccineType}_min`) &&
+                                    storeDataRecord.hasOwnProperty(`${vaccineType}_max`)
+                                  ) {
+                                    const actual = storeDataRecord[vaccineType];
+                                    const min = storeDataRecord[`${vaccineType}_min`];
+                                    const max = storeDataRecord[`${vaccineType}_max`];
+
+                                    if (actual < min) {
+                                      const progress = ((actual - min) / (max - min)) * 100;
+                                      const barWidth = Math.min(Math.abs(progress), 100);
+                                      progressBarContent = (
+                                        <div className="flex flex-col">
+                                          <span className="text-sm font-bold text-center">Available Stock: {actual}</span>
+                                          <div className="relative w-full h-4 bg-gray-200 rounded overflow-hidden">
+                                          
+                                            <div
+                                              className="absolute top-0 left-0 h-4 bg-red-500 rounded"
+                                              style={{ width: `${barWidth}%` }}
+                                            ></div>
+                                           
+                                            <span className="absolute inset-0 flex items-center justify-center text-xs text-black">
+                                              {progress.toFixed(0)}%
+                                            </span>
+                                          </div>
+                                          <div className="flex justify-between text-xs mt-1">
+                                            <span>Min: {min}</span>
+                                            
+                                            <span>Max: {max}</span>
+                                          </div>
+                                        </div>
+                                      );
+                                    } else {
+                                      // Calculate progress percentage (can be >100)
+                                      const progress = max !== min ? ((actual - min) / (max - min)) * 100 : 0;
+                                      const barWidth = Math.min(progress, 100);
+                                      progressBarContent = (
+                                        <div className="flex flex-col">
+                                          <span className="text-sm font-bold text-center">Avalible Stock: {actual}</span>
+                                          <div className="relative w-full h-4 bg-gray-200 rounded overflow-hidden">
+                                            <div
+                                              className="absolute top-0 left-0 h-4 bg-green-500 rounded"
+                                              style={{ width: `${barWidth}%` }}
+                                            ></div>
+                                            <span className="absolute inset-0 flex items-center justify-center text-xs text-black">
+                                              {progress.toFixed(0)}%
+                                            </span>
+                                          </div>
+                                          <div className="flex justify-between text-xs mt-1">
+                                            <span>Min: {min}</span>
+                                          
+                                            <span>Max: {max}</span>
+                                          </div>
+                                        </div>
+                                      );
+                                    }
+                                   
+                                  } else if (storeDataRecord !== undefined && level !== 'Central') {
+                                    progressBarContent = 'No Data';
+                                  } else {
+                                    progressBarContent = item.stockout_risk;
+                                  }
+                                
+
+                                  return (
+                                    <tr key={index} className={colorClasses[level]?.expandedRow || 'bg-gray-50'}>
+                                      <td className="px-6 py-4 border border-gray-300">{item.country_name}</td>
+                                      <td className="px-6 py-4 border border-gray-300">
+                                        <div className="flex flex-col">
+                                          <span className="font-normal">{item.store_name}</span>
+                                          <span className="text-xs text-gray-600">{item.unique_id}</span>
+                                        </div>
+                                      </td>
+                                      <td className="px-6 py-4 border border-gray-300">
+                                        <div className="flex flex-col">
+                                        
+                                          <span className=" text-sm font-bold">{parentStoreRecord?.adminlevel1}</span>
+                                          
+                                          <span className="text-xs">{storeDataRecord?.parentstore || 'No Parent Store'}</span>
+                                          {parentVaccineStock !== undefined && (
+                                            <span className="text-xs text-gray-600 font-bold">Parent Stock: {parentVaccineStock}</span>
+                                          )}
+                                        </div>
+                                      </td>
+                                      <td className="px-6 py-4 border border-gray-300">{item.vaccine_type}</td>
+                                      <td className="px-6 py-4 border border-gray-300">{(item.probability * 100).toFixed(0)}%</td>
+                                      <td className="px-6 py-4 border border-gray-300">
+                                        {progressBarContent}
+                                      </td>
+                                      
+                                      <td className="px-6 py-4 border border-gray-300">
+                                        {new Date(item.report_date).toLocaleDateString()}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )
+                ))}
+              </div>
+            </>
+          )}
         </>
       )}
     </div>

@@ -32,9 +32,6 @@ const StockOutTable = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(checkExistingAuth());
   const [showLoginModal, setShowLoginModal] = useState(!checkExistingAuth());
   
-  // Add new state for search
-  const [searchTerm, setSearchTerm] = useState('');
-  // Add state for API data
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -153,11 +150,6 @@ const StockOutTable = () => {
 
   // Order levels
   const orderedLevels = ['Central', 'Subnational', 'Local'];
-
-  // Add search handler
-  const handleSearch = (event) => {
-    setSearchTerm(event.target.value);
-  };
 
   // Add filter handlers
   const handleStoreFilterChange = (level, value) => {

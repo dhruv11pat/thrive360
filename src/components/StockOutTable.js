@@ -13,6 +13,13 @@ const StockOutTable = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Update filter states to use risk category with 'above80' as default
+  const [filters, setFilters] = useState({
+    Central: { store: '', riskCategory: 'above80' },
+    Subnational: { store: '', riskCategory: 'above80' },
+    Local: { store: '', riskCategory: 'above80' }
+  });
+
   // Fetch country data from API
   useEffect(() => {
     const loadData = async () => {
@@ -53,30 +60,40 @@ const StockOutTable = () => {
   const [expandedLevels, setExpandedLevels] = useState({});
   const [storeData, setStoreData] = useState({});
   const fetchedStoreIds = useRef(new Set());
+  const [loadingStores, setLoadingStores] = useState({});
 
   // Fetch store data from API
   useEffect(() => {
     if (Object.keys(groupedData).length === 0) return;
     
     const loadStoreData = async (storeId) => {
+      if (loadingStores[storeId]) return; // Skip if already loading
+      
       try {
+        setLoadingStores(prev => ({ ...prev, [storeId]: true }));
         const storeInfo = await fetchStoreData(storeId);
         setStoreData((prev) => ({ ...prev, [storeId]: storeInfo }));
       } catch (error) {
         console.error(`Error fetching store data for store ${storeId}:`, error);
         setStoreData((prev) => ({ ...prev, [storeId]: null }));
+      } finally {
+        setLoadingStores(prev => ({ ...prev, [storeId]: false }));
       }
     };
-
-    // Fetch data for each store
-    Object.values(groupedData).flat().forEach((item) => {
-      const storeId = item.unique_id.split('-').slice(0, 3).join('-');
-      if (!fetchedStoreIds.current.has(storeId)) {
-        fetchedStoreIds.current.add(storeId);
-        loadStoreData(storeId);
+    
+    // Only fetch data for visible stores when a level is expanded
+    Object.entries(expandedLevels).forEach(([level, isExpanded]) => {
+      if (isExpanded && groupedData[level]) {
+        groupedData[level].forEach((item) => {
+          const storeId = item.unique_id.split('-').slice(0, 3).join('-');
+          if (!fetchedStoreIds.current.has(storeId)) {
+            fetchedStoreIds.current.add(storeId);
+            loadStoreData(storeId);
+          }
+        });
       }
     });
-  }, [groupedData]);
+  }, [groupedData, expandedLevels]);
 
   // Toggle function for expanding/collapsing levels
   const toggleLevel = (level) => {
@@ -114,6 +131,53 @@ const StockOutTable = () => {
   // Add search handler
   const handleSearch = (event) => {
     setSearchTerm(event.target.value);
+  };
+
+  // Add filter handlers
+  const handleStoreFilterChange = (level, value) => {
+    setFilters(prev => ({
+      ...prev,
+      [level]: { ...prev[level], store: value }
+    }));
+  };
+
+  const handleRiskCategoryChange = (level, category) => {
+    setFilters(prev => ({
+      ...prev,
+      [level]: { ...prev[level], riskCategory: category }
+    }));
+  };
+
+  // Filter data based on filters
+  const getFilteredData = (level) => {
+    if (!groupedData[level]) return [];
+    
+    return groupedData[level].filter(item => {
+      // Filter by store name
+      const storeMatch = item.store_name.toLowerCase().includes(filters[level].store.toLowerCase());
+      
+      // Filter by risk category
+      const riskValue = item.probability * 100;
+      let riskMatch = true;
+      
+      switch(filters[level].riskCategory) {
+        case 'below50':
+          riskMatch = riskValue < 50;
+          break;
+        case '50to80':
+          riskMatch = riskValue >= 50 && riskValue <= 80;
+          break;
+        case 'above80':
+          riskMatch = riskValue > 80;
+          break;
+        case 'all':
+        default:
+          riskMatch = true;
+          break;
+      }
+      
+      return storeMatch && riskMatch;
+    });
   };
 
   return (
@@ -192,6 +256,73 @@ const StockOutTable = () => {
                 <div key={level} className="mb-8">
                   <h2 className="text-xl font-semibold mb-2">Level: {level}</h2>
                   <p className="mb-4">This table shows the stock-out situations for level {level}.</p>
+                  
+                  {/* Updated filter section with buttons */}
+                  <div className="bg-gray-100 p-4 mb-4 rounded-lg">
+                    <h3 className="text-lg font-medium mb-2">Filters</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Store Name
+                        </label>
+                        <input
+                          type="text"
+                          className="w-full p-2 border rounded-md"
+                          placeholder="Filter by store name..."
+                          value={filters[level].store}
+                          onChange={(e) => handleStoreFilterChange(level, e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Stock-out Risk
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            className={`px-3 py-1 rounded-md ${
+                              filters[level].riskCategory === 'below50' 
+                                ? 'bg-blue-500 text-white' 
+                                : 'bg-gray-200 text-gray-800'
+                            }`}
+                            onClick={() => handleRiskCategoryChange(level, 'below50')}
+                          >
+                            Below 50%
+                          </button>
+                          <button
+                            className={`px-3 py-1 rounded-md ${
+                              filters[level].riskCategory === '50to80' 
+                                ? 'bg-blue-500 text-white' 
+                                : 'bg-gray-200 text-gray-800'
+                            }`}
+                            onClick={() => handleRiskCategoryChange(level, '50to80')}
+                          >
+                            50% - 80%
+                          </button>
+                          <button
+                            className={`px-3 py-1 rounded-md ${
+                              filters[level].riskCategory === 'above80' 
+                                ? 'bg-blue-500 text-white' 
+                                : 'bg-gray-200 text-gray-800'
+                            }`}
+                            onClick={() => handleRiskCategoryChange(level, 'above80')}
+                          >
+                            Above 80%
+                          </button>
+                          <button
+                            className={`px-3 py-1 rounded-md ${
+                              filters[level].riskCategory === 'all' 
+                                ? 'bg-blue-500 text-white' 
+                                : 'bg-gray-200 text-gray-800'
+                            }`}
+                            onClick={() => handleRiskCategoryChange(level, 'all')}
+                          >
+                            Show All
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
                   <div className="overflow-x-auto">
                     <table className="min-w-full border-collapse border border-gray-300">
                       <thead>
@@ -211,9 +342,9 @@ const StockOutTable = () => {
                           onClick={() => toggleLevel(level)}
                         >
                           <td className="px-6 py-4 border border-gray-300">{level}</td>
-                          <td className="px-6 py-4 border border-gray-300">{groupedData[level].length}</td>
-                          <td className="px-6 py-4 border border-gray-300">{new Set(groupedData[level].map(item => item.store_name)).size}</td>
-                          <td className="px-6 py-4 border border-gray-300">{new Set(groupedData[level].map(item => item.vaccine_type)).size}</td>
+                          <td className="px-6 py-4 border border-gray-300">{getFilteredData(level).length}</td>
+                          <td className="px-6 py-4 border border-gray-300">{new Set(getFilteredData(level).map(item => item.store_name)).size}</td>
+                          <td className="px-6 py-4 border border-gray-300">{new Set(getFilteredData(level).map(item => item.vaccine_type)).size}</td>
                           <td className="px-6 py-4 border border-gray-300">{expandedLevels[level] ? 'Collapse' : 'Expand'}</td>
                           <td className="py-2 px-6 border border-gray-300 flex flex-col">
                             <button className="bg-gray-500 text-white text-xs px-2 py-1 mb-2 rounded" data-tooltip-target="tooltip-funding">Funding</button>
@@ -236,7 +367,7 @@ const StockOutTable = () => {
                               <th className="px-6 py-3 border border-gray-300">Curent Stataus(Min/Max)</th>
                               <th className="px-6 py-3 border border-gray-300">Report Date</th>
                             </tr>
-                            {groupedData[level].map((item, index) => {
+                            {getFilteredData(level).map((item, index) => {
                               const storeId = item.unique_id.split('-').slice(0, 3).join('-');
                               const storeInfo = storeData[storeId];
                               const storeDataRecord = Array.isArray(storeInfo) ? storeInfo[0] : storeInfo;

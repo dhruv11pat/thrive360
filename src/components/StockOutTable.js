@@ -93,7 +93,7 @@ const StockOutTable = () => {
         });
       }
     });
-  }, [groupedData, expandedLevels]);
+  }, [groupedData, expandedLevels, loadingStores]);
 
   // Toggle function for expanding/collapsing levels
   const toggleLevel = (level) => {

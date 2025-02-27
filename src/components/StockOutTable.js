@@ -374,6 +374,7 @@ const StockOutTable = () => {
                               const vaccineType = item.vaccine_type.toLowerCase();
                               
                               // Get parent store data
+                              console.log('Store Data Record', storeDataRecord);
                               const parentStoreId = storeDataRecord?.parentstore;
                               const parentStoreInfo = parentStoreId ? storeData[parentStoreId] : null;
                               const parentStoreRecord = Array.isArray(parentStoreInfo) ? parentStoreInfo[0] : parentStoreInfo;

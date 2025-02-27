@@ -41,19 +41,11 @@ export const fetchStoreData = async (storeId) => {
     if (!response.ok) {
       // If it's a 404 or similar, treat it as a "no data" case.
       if (response.status === 404) {
-        let errorMsg = 'No data found for the specified query.';
-        try {
-          const errorJson = await response.json();
-          if (errorJson.error) {
-            errorMsg = errorJson.error;
-          }
-        } catch (e) {
-          // ignore JSON parse errors
-        }
-        console.warn(`Store ${storeId} returned error: ${errorMsg}`);
+        console.warn(`No data found for store ${storeId}`);
         return null;
       }
-      throw new Error(`HTTP error! status: ${response.status}`);
+      console.warn(`Store ${storeId} returned status: ${response.status}`);
+      return null; // Return null instead of throwing error
     }
 
     const json = await response.json();
@@ -63,7 +55,8 @@ export const fetchStoreData = async (storeId) => {
     }
     return json;
   } catch (error) {
-    console.error(`Error fetching store data for store ${storeId}:`, error);
-    throw error;
+    // For network errors or other exceptions, log but don't throw
+    console.warn(`Skipping store ${storeId} due to error: ${error.message}`);
+    return null; // Return null instead of re-throwing
   }
 };

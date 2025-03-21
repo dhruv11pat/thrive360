@@ -1,101 +1,112 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
 const LoginModal = ({ isOpen, onLogin }) => {
-  const [code, setCode] = useState(['', '', '', '']);
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [userRole, setUserRole] = useState('Country Office');
   const [error, setError] = useState('');
-  const [refs] = useState(Array(4).fill(0).map(() => React.createRef()));
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Focus the first input when modal opens
-  useEffect(() => {
-    if (isOpen && refs[0].current) {
-      refs[0].current.focus();
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    
+    // Basic validation
+    if (!username || !password) {
+      setError('Please enter both username and password');
+      return;
     }
-  }, [isOpen, refs]);
-
-  const handleChange = (index, value) => {
-    // Only allow digits
-    if (!/^\d*$/.test(value)) return;
-
-    // Update the code array
-    const newCode = [...code];
-    newCode[index] = value.slice(0, 1); // Only take the first character
-    setCode(newCode);
-
-    // Clear any previous error
+    
+    setIsLoading(true);
     setError('');
-
-    // Auto-focus next input if value is entered
-    if (value && index < 3 && refs[index + 1].current) {
-      refs[index + 1].current.focus();
-    }
-
-    // Try to submit if all digits are filled
-    if (value && index === 3) {
-      handleSubmit(newCode.join(''));
-    }
-  };
-
-  const handleKeyDown = (index, e) => {
-    // Move to previous input on backspace if current input is empty
-    if (e.key === 'Backspace' && !code[index] && index > 0 && refs[index - 1].current) {
-      refs[index - 1].current.focus();
-    }
-  };
-
-  const handleSubmit = (fullCode) => {
-    // Check if the code is correct (1234 for this example)
-    // In a real app, you would validate against an API or stored value
-    if (fullCode === '8888') {
-      onLogin(true);
-    } else {
-      setError('Invalid code. Please try again.');
-      // Clear the code fields
-      setCode(['', '', '', '']);
-      // Focus the first input
-      if (refs[0].current) {
-        refs[0].current.focus();
-      }
-    }
+    
+    // Simulate API call with timeout
+    setTimeout(() => {
+      // In a real app, you would validate credentials with an API
+      // For this demo, we'll accept any combination and pass the selected role
+      setIsLoading(false);
+      onLogin(true, userRole);
+    }, 1000);
   };
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-8 max-w-md w-full">
-        <h2 className="text-2xl font-bold mb-6 text-center">Stock-Out Dashboard</h2>
-        <p className="text-center mb-6">Please enter the 4-digit access code to continue</p>
+      <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
+        <h2 className="text-2xl font-bold text-gray-800 mb-6">Login to Stock-Out Dashboard</h2>
         
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            {error}
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+            <span className="block sm:inline">{error}</span>
           </div>
         )}
         
-        <div className="flex justify-center space-x-4 mb-6">
-          {code.map((digit, index) => (
+        <form onSubmit={handleSubmit}>
+          <div className="mb-4">
+            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="username">
+              Username / Email
+            </label>
             <input
-              key={index}
-              ref={refs[index]}
+              id="username"
               type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              maxLength="1"
-              value={digit}
-              onChange={(e) => handleChange(index, e.target.value)}
-              onKeyDown={(e) => handleKeyDown(index, e)}
-              className="w-12 h-16 text-center text-2xl border-2 border-gray-300 rounded-md focus:border-blue-500 focus:outline-none"
+              placeholder="Enter your username or email"
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
             />
-          ))}
-        </div>
-        
-        <button
-          onClick={() => handleSubmit(code.join(''))}
-          disabled={code.some(digit => !digit)}
-          className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Enter Dashboard
-        </button>
+          </div>
+          
+          <div className="mb-6">
+            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="password">
+              Password
+            </label>
+            <input
+              id="password"
+              type="password"
+              placeholder="Enter your password"
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </div>
+          
+          <div className="mb-6">
+            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="userRole">
+              Login As
+            </label>
+            <select
+              id="userRole"
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              value={userRole}
+              onChange={(e) => setUserRole(e.target.value)}
+            >
+              <option value="Country Office">Nigeria Country Office</option>
+              <option value="UNICEF">UNICEF</option>
+              <option value="GAVI">GAVI</option>
+              <option value="Administrator">Administrator</option>
+            </select>
+          </div>
+          
+          <div className="flex items-center justify-between">
+            <button
+              type="submit"
+              className={`bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <span className="flex justify-center items-center">
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Logging in...
+                </span>
+              ) : 'Sign In'}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

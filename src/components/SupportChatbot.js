@@ -26,7 +26,7 @@ const SupportChatbot = () => {
     
     // General THRIVE360 questions
     if (lowerQuestion.includes('what is thrive360') || lowerQuestion.includes('thrive360 suite')) {
-      return 'THRIVE360 is a comprehensive platform for vaccine supply chain management. It includes tools for stock-out prediction, analytics, ticket management, forecasting, and sustainability tracking.';
+      return 'THRIVE360 is a comprehensive platform for vaccine supply chain management. It includes tools for stock-out prediction, analytics, ticket management, forecasting, equipment monitoring, and sustainability tracking.';
     }
     
     // AI Models questions
@@ -54,6 +54,16 @@ const SupportChatbot = () => {
       return 'Our Forecasting Planning module helps optimize vaccine forecasts to improve supply chain efficiency. It uses historical data and AI models to predict future demand and recommend optimal inventory levels.';
     }
     
+    // Cold Chain Equipment questions
+    if (lowerQuestion.includes('cold chain') || lowerQuestion.includes('refrigerator') || lowerQuestion.includes('freezer') || lowerQuestion.includes('equipment')) {
+      return 'The Cold Chain Equipment module allows you to track and manage refrigerators, freezers, and cold boxes across health facilities. It helps monitor maintenance schedules, functional status, and capacity utilization to ensure vaccines remain effective.';
+    }
+    
+    // Temperature monitoring questions
+    if (lowerQuestion.includes('temperature') || lowerQuestion.includes('rtmd') || lowerQuestion.includes('monitor')) {
+      return 'The Temperature (RTMD) module provides real-time temperature monitoring for cold chain equipment. It alerts you to temperature excursions that could compromise vaccine potency and helps maintain the integrity of the cold chain.';
+    }
+    
     // Sustainability questions
     if (lowerQuestion.includes('solar') || lowerQuestion.includes('carbon') || lowerQuestion.includes('waste') || lowerQuestion.includes('sustainability')) {
       return 'THRIVE360 includes several sustainability modules: Solar Electrification for tracking solar power at health facilities, Waste Management for optimizing healthcare waste processes, and Carbon Footprint tracking for measuring the environmental impact of immunization programs.';
@@ -65,7 +75,7 @@ const SupportChatbot = () => {
     }
     
     // Fallback for unknown questions
-    return "I don't have specific information about that yet. Please try asking about THRIVE360 features like the dashboard, AI models, ticketing system, forecasting, or sustainability modules.";
+    return "I don't have specific information about that yet. Please try asking about THRIVE360 features like the dashboard, AI models, ticketing system, cold chain equipment, temperature monitoring, forecasting, or sustainability modules.";
   };
 
   const handleSendMessage = () => {
